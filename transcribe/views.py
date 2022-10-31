@@ -58,3 +58,51 @@ def index(request):
             return render(request, 'index.html',{"text":text})
         else:
             return HttpResponse("Sorry., You Choose Wrong file. Please Reload the page")
+
+# pip install Wave
+import wave, math, contextlib
+import speech_recognition as sr
+from moviepy.editor import AudioFileClip
+import os
+
+def index(request):
+    if "GET" == request.method:
+        return render(request, 'index.html', {})
+    else:
+        file = request.FILES["vid_file"]
+        file_type = file.content_type.split('/')[0]
+        if file_type=="video":
+
+            
+            fs = FileSystemStorage(location=os.path.join(settings.MEDIA_ROOT))
+            file = fs.save(file.name, file)
+
+            path = os.path.join(settings.MEDIA_ROOT, file)
+            audio_file = path+".wav"
+            txt_file = path+".txt"
+            audioclip = AudioFileClip(path)
+            audioclip.write_audiofile(audio_file)
+
+            with contextlib.closing(wave.open(audio_file,'r')) as f:
+                frames = f.getnframes()
+                rate = f.getframerate()
+                duration = frames / float(rate)
+                total_duration = math.ceil(duration / 60)
+
+                r = sr.Recognizer()
+
+                for i in range(0, total_duration):
+                    with sr.AudioFile(audio_file) as source:
+                        audio = r.record(source, offset=i*60, duration=60)
+                        txt=r.recognize_google(audio)
+                        print(txt)
+                        f = open(txt_file, "a")
+                        f.write(r.recognize_google(audio))
+                        f.write(" ")
+                        f.close()
+                f = open(txt_file, "r")
+                txt= f.read()
+
+            return render(request, 'index.html',{"text":txt})
+        else:
+            return HttpResponse("Sorry., You Choose Wrong file. Please Reload the page")
